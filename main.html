@@ -118,7 +118,6 @@
                 let icons = await findIcons(steam.value);
                 for (let i = 0; i < installedGames.length; i++) {
                     let app = appInfo.Apps.find(item => item.AppID == installedGames[i]);
-                    console.log(app.Data);
                     let game = {
                         id: app.AppID,
                         name: queryData(app.Data, 'common.name'),
