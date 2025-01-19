@@ -1,5 +1,11 @@
 package appinfoparser
 
+// Partially based on code from SteamDB's AppInfo parser.
+// Original code licensed under the MIT License:
+// https://github.com/SteamDatabase/SteamDatabase/blob/master/LICENSE
+//
+// Copyright (c) 2020 SteamDB
+
 type EUniverse uint32
 
 const (

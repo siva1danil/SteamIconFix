@@ -1,5 +1,11 @@
 package appinfoparser
 
+// Partially based on code from SteamDB's AppInfo parser.
+// Original code licensed under the MIT License:
+// https://github.com/SteamDatabase/SteamDatabase/blob/master/LICENSE
+//
+// Copyright (c) 2020 SteamDB
+
 import (
 	"bytes"
 	"encoding/binary"
@@ -38,7 +44,7 @@ func AppInfoFromReader(r io.Reader) (*AppInfo, error) {
 	}
 
 	if tmp == Magic29 {
-		var stringTableOffset int64
+		stringTableOffset := int64(0)
 		if err := binary.Read(reader, binary.LittleEndian, &stringTableOffset); err != nil {
 			return nil, err
 		}
@@ -48,7 +54,7 @@ func AppInfoFromReader(r io.Reader) (*AppInfo, error) {
 			return nil, err
 		}
 
-		var stringCount uint32
+		stringCount := uint32(0)
 		if err := binary.Read(reader, binary.LittleEndian, &stringCount); err != nil {
 			return nil, err
 		}
