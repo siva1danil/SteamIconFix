@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        * {
+            user-select: none;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-size: 10pt;
+        }
+
+        html, body {
+            width: 100%;
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            background: #F0F0F0;
+        }
+
+        .div-input {
+            display: flex;
+            width: 100%;
+            padding: 16px 16px 0 16px;
+            flex-direction: row;
+            align-items: center;
+        }
+        .div-input > span {
+            display: block;
+            flex: 0 0 125px;
+        }
+        .div-input > input {
+            display: block;
+            flex: 1 1 100%;
+        }
+
+        .div-buttons {
+            display: flex;
+            width: 100%;
+            padding: 16px 16px 0 16px;
+            flex-direction: row;
+            align-items: center;
+            gap: 16px;
+        }
+        .div-buttons > button {
+            display: block;
+            flex: 1 1 100%;
+        }
+
+        .div-games {
+            width: 100%;
+            padding: 16px 16px 0 16px;
+        }
+        .div-games > div {
+            height: 250px;
+            overflow-y: scroll;
+            border: 1px solid #C0C0C0;
+            background: #FFFFFF;
+        }
+        .div-games > div > * {
+            display: block;
+            margin: 3px 2px 3px 2px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .div-games > div > *:hover {
+            background: #E0E0E0;
+        }
+    </style>
+    <script>
+        function queryData(data, path) {
+            let segments = path.split('.').filter(item => item != '');
+            let current = data;
+            for (let i = 0; i < segments.length - 1; i++) {
+                let index = current.MapValue.findIndex(item => item.Name == segments[i]);
+                if (index == -1) return null;
+                current = current.MapValue[index];
+            }
+            let index = current.MapValue.findIndex(item => item.Name == segments[segments.length - 1]);
+            if (index == -1) return null;
+            return current.MapValue[index].MapValue || current.MapValue[index].StringValue || current.MapValue[index].NumberValue;
+        }
+
+        async function downloadIconAsync(steam, id, icon) {
+            await downloadIcon(steam, id, icon);
+            while(true) {
+                let result = await downloadIconResult();
+
+                if (result == '') return;
+                else if (result != null) throw new Error(result);
+
+                await new Promise(resolve => setTimeout(resolve, 100));
+            }
+        }
+
+        function switchControls(enabled, ...buttons) {
+            for (let i = 0; i < buttons.length; i++) {
+                buttons[i].disabled = !enabled;
+            }
+        }
+
+        window.addEventListener('load', async () => {
+            let steam = document.getElementById("steam");
+            let loadGames = document.getElementById("loadGames");
+            let games = document.getElementById("games");
+            let fixIcons = document.getElementById("fixIcons");
+
+            let data_games = [];
+
+            loadGames.addEventListener('click', async () => {
+                switchControls(false, loadGames, fixIcons);
+
+                let installedGames = await findInstalledGames(steam.value);
+                let appInfo = await findAppInfo(steam.value);
+                let icons = await findIcons(steam.value);
+                for (let i = 0; i < installedGames.length; i++) {
+                    let app = appInfo.Apps.find(item => item.AppID == installedGames[i]);
+                    console.log(app.Data);
+                    let game = {
+                        id: app.AppID,
+                        name: queryData(app.Data, 'common.name'),
+                        icon: queryData(app.Data, 'common.clienticon'),
+                        broken: queryData(app.Data, 'common.clienticon') && !icons.includes(queryData(app.Data, 'common.clienticon'))
+                    }
+                    data_games.push(game);
+                }
+                games.innerHTML = data_games.map(game => `<div title="AppID: ${game.id}&#10;Name: ${game.name || 'N/A'}&#10;Icon: ${game.icon}&#10;Broken: ${game.broken ? 'Yes' : 'No'}">${!game.broken ? '<s>' : ''}${game.name || 'N/A'} (#${game.id}) - ${game.icon || 'N/A'}${!game.broken ? '</s>' : ''}</div>`).join("");
+
+                switchControls(true, loadGames, fixIcons);
+            });
+
+            fixIcons.addEventListener('click', async () => {
+                switchControls(false, loadGames, fixIcons);
+
+                for (let i = 0; i < data_games.length; i++) {
+                    if (data_games[i].broken) {
+                        await downloadIconAsync(steam.value, data_games[i].id, data_games[i].icon);
+                        data_games[i].broken = false;
+                        games.innerHTML = data_games.map(game => `<div title="AppID: ${game.id}&#10;Name: ${game.name || 'N/A'}&#10;Icon: ${game.icon}&#10;Broken: ${game.broken ? 'Yes' : 'No'}">${!game.broken ? '<s>' : ''}${game.name || 'N/A'} (#${game.id}) - ${game.icon || 'N/A'}${!game.broken ? '</s>' : ''}</div>`).join("");
+                    }
+                }
+
+                switchControls(true, loadGames, fixIcons);
+            });
+
+            steam.value = await findSteamPath();
+        });
+    </script>
+</head>
+
+<body>
+    <div class="div-input">
+        <span>Steam Directory:</span>
+        <input type="text" id="steam">
+    </div>
+    
+    <div class="div-buttons">
+        <button id="loadGames">Load games from Steam</button>
+    </div>
+
+    <div class="div-games">
+        <div id="games"></div>
+    </div>
+
+    <div class="div-buttons">
+        <button id="fixIcons">Fix icons</button>
+    </div>
+</body>
+
+</html>
